@@ -23,17 +23,22 @@ function ChartTooltip({ active, payload, label }: TooltipContentProps) {
   if (!active || !payload || !payload.length) return null;
   const buy = Number(payload.find((p) => p.dataKey === "buyingNetWorth")?.value ?? 0);
   const rent = Number(payload.find((p) => p.dataKey === "rentingNetWorth")?.value ?? 0);
+  const interest = Number(payload.find((p) => p.dataKey === "cumulativeInterestPaid")?.value ?? 0);
   const diff = buy - rent;
   return (
     <div className="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs shadow-md">
       <div className="font-medium mb-1">Year {label}</div>
       <div className="flex justify-between gap-4">
-        <span className="text-emerald-600">Buying</span>
+        <span className="text-emerald-600">Buying net worth</span>
         <span>{formatCurrency(buy)}</span>
       </div>
       <div className="flex justify-between gap-4">
-        <span className="text-sky-600">Renting</span>
+        <span className="text-sky-600">Renting net worth</span>
         <span>{formatCurrency(rent)}</span>
+      </div>
+      <div className="flex justify-between gap-4">
+        <span className="text-orange-500">Interest paid</span>
+        <span>{formatCurrency(interest)}</span>
       </div>
       <div className="flex justify-between gap-4 pt-1 mt-1 border-t border-zinc-200 dark:border-zinc-700">
         <span className="text-zinc-500">Difference</span>
@@ -88,6 +93,15 @@ export function ResultsChart({ results, breakEvenYear }: Props) {
             name="Renting"
             stroke="#0ea5e9"
             strokeWidth={2}
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="cumulativeInterestPaid"
+            name="Interest paid"
+            stroke="#f97316"
+            strokeWidth={2}
+            strokeDasharray="5 3"
             dot={false}
           />
         </LineChart>

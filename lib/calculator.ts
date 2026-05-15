@@ -3,6 +3,7 @@ export interface CalculatorInputs {
   downPaymentPct: number;
   mortgageRatePct: number;
   mortgageTermYears: number;
+  extraMonthlyPayment: number;
 
   propertyTaxRatePct: number;
   homeInsuranceAnnual: number;
@@ -21,6 +22,12 @@ export interface CalculatorInputs {
   standardDeductionAnnual: number;
   saltCapAnnual: number;
 
+  refinanceEnabled: boolean;
+  refinanceYear: number;
+  refinanceRatePct: number;
+  refinanceTermYears: number;
+  refinanceClosingCostPct: number;
+
   timeHorizonYears: number;
 }
 
@@ -35,6 +42,7 @@ export interface YearResult {
   rentingNetWorth: number;
   cumulativeBuyCost: number;
   cumulativeRentCost: number;
+  cumulativeInterestPaid: number;
   monthlyBuyCost: number;
   monthlyRentCost: number;
 }
@@ -44,6 +52,7 @@ export const DEFAULT_INPUTS: CalculatorInputs = {
   downPaymentPct: 20,
   mortgageRatePct: 6.5,
   mortgageTermYears: 30,
+  extraMonthlyPayment: 0,
 
   propertyTaxRatePct: 1.2,
   homeInsuranceAnnual: 1_500,
@@ -62,6 +71,12 @@ export const DEFAULT_INPUTS: CalculatorInputs = {
   standardDeductionAnnual: 29_200,
   saltCapAnnual: 10_000,
 
+  refinanceEnabled: false,
+  refinanceYear: 5,
+  refinanceRatePct: 5.0,
+  refinanceTermYears: 30,
+  refinanceClosingCostPct: 2,
+
   timeHorizonYears: 30,
 };
 
@@ -70,13 +85,16 @@ export function calculate(inputs: CalculatorInputs): YearResult[] {
   const loanAmount = inputs.homePrice - downPayment;
   const closingCosts = inputs.homePrice * (inputs.closingCostPct / 100);
 
-  const monthlyRate = inputs.mortgageRatePct / 100 / 12;
+  let monthlyRate = inputs.mortgageRatePct / 100 / 12;
   const totalPayments = inputs.mortgageTermYears * 12;
-  const monthlyPI =
+  let monthlyPI =
     monthlyRate === 0
       ? loanAmount / totalPayments
       : (loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, totalPayments))) /
         (Math.pow(1 + monthlyRate, totalPayments) - 1);
+
+  const refinanceMonth = inputs.refinanceEnabled ? inputs.refinanceYear * 12 : -1;
+  let refinanceDone = false;
 
   const monthlyAppreciation = Math.pow(1 + inputs.homeAppreciationPct / 100, 1 / 12) - 1;
   const monthlyRentGrowth = Math.pow(1 + inputs.rentGrowthPct / 100, 1 / 12) - 1;
@@ -94,6 +112,7 @@ export function calculate(inputs: CalculatorInputs): YearResult[] {
 
   let cumulativeBuyCost = downPayment + closingCosts;
   let cumulativeRentCost = 0;
+  let cumulativeInterestPaid = 0;
 
   const results: YearResult[] = [];
 
@@ -109,6 +128,7 @@ export function calculate(inputs: CalculatorInputs): YearResult[] {
     rentingNetWorth: renterInvestments,
     cumulativeBuyCost,
     cumulativeRentCost,
+    cumulativeInterestPaid: 0,
     monthlyBuyCost: 0,
     monthlyRentCost: 0,
   });
@@ -122,12 +142,29 @@ export function calculate(inputs: CalculatorInputs): YearResult[] {
     let lastMonthRentCost = 0;
 
     for (let m = 0; m < 12; m++) {
+      const absoluteMonth = (year - 1) * 12 + m + 1;
+      if (!refinanceDone && absoluteMonth === refinanceMonth && mortgageBalance > 0) {
+        const refiClosingCosts = mortgageBalance * (inputs.refinanceClosingCostPct / 100);
+        buyerInvestments -= refiClosingCosts;
+        yearBuyCost += refiClosingCosts;
+        monthlyRate = inputs.refinanceRatePct / 100 / 12;
+        const refiPayments = inputs.refinanceTermYears * 12;
+        monthlyPI =
+          monthlyRate === 0
+            ? mortgageBalance / refiPayments
+            : (mortgageBalance * (monthlyRate * Math.pow(1 + monthlyRate, refiPayments))) /
+              (Math.pow(1 + monthlyRate, refiPayments) - 1);
+        refinanceDone = true;
+      }
+
       let monthlyInterest = 0;
       let monthlyPrincipal = 0;
       let monthlyMortgagePayment = 0;
       if (mortgageBalance > 0) {
         monthlyInterest = mortgageBalance * monthlyRate;
-        monthlyPrincipal = Math.min(monthlyPI - monthlyInterest, mortgageBalance);
+        const scheduledPrincipal = Math.min(monthlyPI - monthlyInterest, mortgageBalance);
+        const extraPrincipal = Math.min(inputs.extraMonthlyPayment, mortgageBalance - scheduledPrincipal);
+        monthlyPrincipal = scheduledPrincipal + extraPrincipal;
         monthlyMortgagePayment = monthlyInterest + monthlyPrincipal;
         mortgageBalance -= monthlyPrincipal;
       }
@@ -179,6 +216,7 @@ export function calculate(inputs: CalculatorInputs): YearResult[] {
 
     cumulativeBuyCost += yearBuyCost;
     cumulativeRentCost += yearRentCost;
+    cumulativeInterestPaid += yearMortgageInterest;
 
     const sellCost = homeValue * (inputs.sellingCostPct / 100);
     const homeEquityAfterSale = homeValue - mortgageBalance - sellCost;
@@ -194,6 +232,7 @@ export function calculate(inputs: CalculatorInputs): YearResult[] {
       rentingNetWorth: renterInvestments,
       cumulativeBuyCost,
       cumulativeRentCost,
+      cumulativeInterestPaid,
       monthlyBuyCost: lastMonthBuyCost,
       monthlyRentCost: lastMonthRentCost,
     });

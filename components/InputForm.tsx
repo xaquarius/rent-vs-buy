@@ -25,6 +25,7 @@ const SECTIONS: SectionDef[] = [
       { key: "downPaymentPct", label: "Down payment", suffix: "%", step: 1 },
       { key: "mortgageRatePct", label: "Mortgage rate", suffix: "%", step: 0.125 },
       { key: "mortgageTermYears", label: "Loan term", suffix: "yrs", step: 1 },
+      { key: "extraMonthlyPayment", label: "Extra monthly payment", suffix: "$", step: 50 },
     ],
   },
   {
@@ -62,6 +63,13 @@ const SECTIONS: SectionDef[] = [
   },
 ];
 
+const REFI_FIELDS: FieldDef[] = [
+  { key: "refinanceYear", label: "Refinance at year", suffix: "yrs", step: 1 },
+  { key: "refinanceRatePct", label: "New rate", suffix: "%", step: 0.125 },
+  { key: "refinanceTermYears", label: "New term", suffix: "yrs", step: 1 },
+  { key: "refinanceClosingCostPct", label: "Refi closing costs", suffix: "%", step: 0.1 },
+];
+
 interface Props {
   values: CalculatorInputs;
   onChange: (next: CalculatorInputs) => void;
@@ -96,7 +104,7 @@ export function InputForm({ values, onChange }: Props) {
                     inputMode="decimal"
                     step={field.step}
                     min={field.min ?? 0}
-                    value={values[field.key]}
+                    value={(values[field.key] as number) ?? 0}
                     onChange={(e) => update(field.key, e.target.value)}
                     className={`w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 py-1.5 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                       field.suffix === "$" ? "pl-6 pr-9" : "pl-2 pr-9"
@@ -113,6 +121,44 @@ export function InputForm({ values, onChange }: Props) {
           </div>
         </fieldset>
       ))}
+
+      <fieldset className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-4">
+        <legend className="px-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+          Refinance
+        </legend>
+        <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400 mb-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={values.refinanceEnabled}
+            onChange={(e) => onChange({ ...values, refinanceEnabled: e.target.checked })}
+            className="rounded border-zinc-300 dark:border-zinc-700 accent-blue-500"
+          />
+          Model a refinance
+        </label>
+        {values.refinanceEnabled && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {REFI_FIELDS.map((field) => (
+              <label key={field.key} className="flex flex-col text-xs gap-1">
+                <span className="text-zinc-600 dark:text-zinc-400">{field.label}</span>
+                <div className="relative">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step={field.step}
+                    min={0}
+                    value={(values[field.key] as number) ?? 0}
+                    onChange={(e) => update(field.key, e.target.value)}
+                    className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 py-1.5 pl-2 pr-9 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 text-xs pointer-events-none">
+                    {field.suffix}
+                  </span>
+                </div>
+              </label>
+            ))}
+          </div>
+        )}
+      </fieldset>
     </div>
   );
 }
