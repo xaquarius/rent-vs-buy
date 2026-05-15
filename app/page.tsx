@@ -4,6 +4,12 @@ import { useMemo, useState } from "react";
 import { InputForm } from "@/components/InputForm";
 import { ResultsChart } from "@/components/ResultsChart";
 import {
+  AssetClass,
+  DEFAULT_PORTFOLIO,
+  PortfolioMix,
+  blendedReturn,
+} from "@/components/PortfolioMix";
+import {
   CalculatorInputs,
   DEFAULT_INPUTS,
   calculate,
@@ -13,8 +19,14 @@ import {
 
 export default function Home() {
   const [inputs, setInputs] = useState<CalculatorInputs>(DEFAULT_INPUTS);
+  const [portfolio, setPortfolio] = useState<AssetClass[]>(DEFAULT_PORTFOLIO);
 
-  const results = useMemo(() => calculate(inputs), [inputs]);
+  const effectiveInputs = useMemo(
+    () => ({ ...inputs, investmentReturnPct: blendedReturn(portfolio) }),
+    [inputs, portfolio]
+  );
+
+  const results = useMemo(() => calculate(effectiveInputs), [effectiveInputs]);
   const breakEvenYear = useMemo(() => findBreakEvenYear(results), [results]);
   const final = results[results.length - 1];
 
@@ -34,12 +46,13 @@ export default function Home() {
           </p>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6">
-          <div className="order-2 lg:order-1">
+        <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6 lg:items-start">
+          <div className="order-2 lg:order-1 space-y-6">
             <InputForm values={inputs} onChange={setInputs} />
+            <PortfolioMix assets={portfolio} onChange={setPortfolio} />
           </div>
 
-          <div className="order-1 lg:order-2 space-y-4">
+          <div className="order-1 lg:order-2 space-y-4 lg:sticky lg:top-8">
             <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
               <div className="text-sm text-zinc-600 dark:text-zinc-400">Verdict</div>
               <div className="text-lg font-medium mt-1">{verdict}</div>

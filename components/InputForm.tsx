@@ -49,9 +49,8 @@ const SECTIONS: SectionDef[] = [
     ],
   },
   {
-    title: "Investment & Tax",
+    title: "Tax",
     fields: [
-      { key: "investmentReturnPct", label: "Investment return / yr", suffix: "%", step: 0.1 },
       { key: "marginalTaxRatePct", label: "Marginal tax rate", suffix: "%", step: 1 },
       { key: "standardDeductionAnnual", label: "Standard deduction", suffix: "$", step: 100 },
       { key: "saltCapAnnual", label: "SALT cap", suffix: "$", step: 100 },
